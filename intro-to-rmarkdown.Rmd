@@ -1,0 +1,50 @@
+---
+title: "RMarkdown lesson"
+output: html_document
+---
+
+```{r setup, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r chunk1, message=FALSE}
+# install.packages("readr")
+library(readr)
+```
+
+## Introduction
+
+The data we are going to use in this exercise was provided by Craig Tweedie (2009) and was downloaded from the [NSF Arctic data Center](https://arcticdata.io/catalog/view/doi:10.18739/A25T3FZ8X)
+
+- read in data
+
+```{r , message=FALSE}
+bg_chem <-read_csv("data/BGchem2008data.csv")
+```
+
+
+## Analysis
+
+We are interested in nutrient concentrations over the whole water column. So we calculate the mean value of nutrients of interest (nitrate, nitrite, and phosphate).
+
+```{r}
+nitrate <- mean(bg_chem$NO3)
+nitrite <- mean(bg_chem$NO2)
+amm <- mean(bg_chem$NH4)
+phos <- mean(bg_chem$P)
+```
+
+- calculate mean Redfield ratio
+
+```{r}
+ratio <- (nitrate+nitrite+amm)/phos
+```
+
+We calculated the Redfield ratio to be `r round(ratio)`
+
+- plot Redfield ratio
+
+```{r, echo = FALSE}
+plot(bg_chem$P, bg_chem$NO2 + bg_chem$NO3 + bg_chem$NH4)
+```
+
