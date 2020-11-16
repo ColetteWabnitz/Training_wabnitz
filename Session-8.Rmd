@@ -1,0 +1,156 @@
+---
+title: "Session 8"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(dplyr)
+library(tidyr)
+library(readr)
+```
+
+
+## Data Sources
+
+
+
+### Read in the data
+
+
+Read data from the following [weblink](https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1)
+
+
+```{r, message=FALSE}
+catch_original <- read_csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1")
+```
+
+
+## Clean and Reshape data
+
+```{r}
+catch_data <- catch_original %>%
+  select(Region:Chum)
+# can also do select(-All, -notesRegCode)
+# or type it all out
+```
+
+```{r}
+catch_clean <- catch_original %>%
+  mutate(Chinook=as.numeric(Chinook))
+# as it introduces NA check those values
+# which(is.na(catch_clean$Chinook))
+# catch_data[401,] as this is the row that had NA introduced
+```
+
+### Remove unnecessary columns
+
+### Check column typing
+
+```{r}
+catch_clean <- catch_data %>%
+  mutate(Chinook = ifelse(Chinook == "I", 1, Chinook))%>%
+  mutate(Chinook = as.numeric(Chinook))
+# if whatever is being tested is true then use 1 otherwise use value 
+# already in Chinook column
+# it will keep the format of the original data, hence here 1 is not entered
+# as a numeric variable but as a character
+```
+
+
+### Reshape data
+
+```{r}
+catch_long <- catch_clean %>%
+  pivot_longer(-c(Region, Year), names_to = "species", values_to = "catch")
+# first columns to ignore
+# names of columns that should be in the result
+# names_to > columns names to
+# shape of the table that should come out
+```
+
+```{r}
+catch_wide <- catch_long %>%
+  pivot_wider(names_from = "species", values_from="catch")
+```
+
+Rename header for catch to include units
+
+```{r}
+catch_long <-catch_long %>%
+  rename(catch_thousands = catch)
+```
+
+Add column to include catch 
+
+```{r}
+catch_long <- catch_long %>%
+  mutate(catch = catch_thousands * 1000) %>%
+  select(-catch_thousands)
+```
+
+```{r}
+mean_region <- catch_long %>% 
+  group_by(Region) %>% 
+  summarise(catch_mean = mean(catch)) %>% 
+  arrange(desc(catch_mean))
+
+# arrange is the same as sort, so here it will sort results by catch mean
+# in increasing order
+# by including desc, will arrange in descending order
+```
+
+```{r}
+n_region<- catch_long %>% 
+  summarise(n = n())
+```
+
+```{r}
+SSE_catch <- catch_long %>% 
+  filter (Region == "SSE")
+
+# select is to pick column
+```
+
+## Join to Regions dataset
+
+```{r}
+region_defs <- read_csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.303.1") %>% 
+  select(code, mgmtArea)
+
+# only need two columns so select
+```
+
+Add the full name of the Management Area to the catch_long table
+```{r}
+catch_joined <- left_join(catch_long, region_defs, by = c("Region" = "code"))
+```
+
+
+```{r}
+sites_df<- data.frame(site = c("HAW-101",
+                                "HAW-103",
+                                "OAH-320",
+                                "OAH-219",
+                                "MAI-039"))
+sites_df %>% 
+  separate(site, c("island", "site_number"),"-")
+```
+
+```{r}
+dates_df <- data.frame(year = c("1930",
+                                "1930",
+                                "1930"),
+                       month = c("12",
+                                "12",
+                                "12"),
+                       day = c("14",
+                               "15",
+                               "16"))
+dates_df %>% 
+  unite(date, year, month, day, sep = "-")
+```
+
