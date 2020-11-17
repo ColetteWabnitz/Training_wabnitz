@@ -1,0 +1,138 @@
+---
+title: "data-vis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message = F}
+  library(leaflet)
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(DT)
+  library(scales)
+  library(knitr)
+```
+
+```{r}
+data_url <- "https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Af119a05b-bbe7-4aea-93c6-85434dcb1c5e"
+
+esc <- tryCatch(
+    read.csv("data/escapement.csv", stringsAsFactors = FALSE),
+    error=function(cond) {
+        message(paste("Escapement file does not seem to exist, so get it from the KNB."))
+        esc <- read.csv(url(data_url, method = "libcurl"), stringsAsFactors = FALSE)
+        return(esc)
+    }
+)
+
+head(esc)
+
+# tryCatch - tries to catch an error
+```
+
+```{r}
+annual_esc <- esc %>% 
+  filter(Species %in% c("Sockeye", "Pink", "Coho", "Chum", "Chinook")) %>% 
+  separate(sampleDate, into = c("year", "month", "day"), sep = "-") %>% 
+  mutate (year = as.numeric(year)) %>% 
+  group_by(year, Species, SASAP.Region) %>% 
+  summarise(escapement = sum(DailyCount))
+
+# chains together a bunch of or statement together
+```
+
+```{r}
+ggplot(annual_esc, mapping = aes(x = Species, y = escapement, fill = SASAP.Region)) +
+  geom_col()
+
+# ggplot(annual_esc, mapping = aes(x = Species, y = escapement, fill = "blue"))
+# looks for column that is blue if entered this way > maps it to the aes
+
+```
+
+```{r}
+kodiak_esc <- annual_esc %>% 
+  filter(SASAP.Region == "Kodiak")
+```
+
+```{r}
+
+my_theme <- theme_classic() +
+  theme(legend.position = "bottom")
+
+ggplot(kodiak_esc, aes(x = year, y = escapement, color = Species)) +
+  geom_point()+
+  geom_line()+
+  scale_y_continuous(labels = comma)+
+  ylab("Escapement")+
+  ggtitle("Kodiak Annual Escapement")+
+  my_theme
+
+# do built-in theme first and then specific theme
+```
+
+```{r}
+
+ggplot(annual_esc, aes(x = year, y = escapement, color = Species)) +
+  geom_point()+
+  geom_line()+
+  facet_wrap(~SASAP.Region, scales = "free_y")+
+  scale_y_continuous(labels = comma)+
+  ylab("Escapement")+
+  ggtitle("Kodiak Annual Escapement")+
+  my_theme
+```
+
+```{r}
+locations <- esc %>% 
+  distinct(Location, Latitude, Longitude) %>% 
+  drop_na()
+# drops any row that has na in it
+```
+
+```{r}
+datatable(locations)
+
+#interactive table
+```
+
+```{r}
+kable(locations)
+
+# static table
+# kableExtra allows you to do some more funky stuff with tables
+# stargazer - can render stat outputs nicely
+# https://gt.rstudio.com/ - can make nice tables for a journal
+```
+
+```{r}
+leaflet(locations) %>% 
+  addTiles() %>% 
+# grabs base tiles from the internet
+  addMarkers(lng = ~Longitude, lat = ~Latitude, popup = ~Location)
+```
+
+```{r}
+leaflet(locations) %>% 
+  addWMSTiles("https://www.gebco.net/data_and_products/gebco_web_services/web_map_service/mapserv?",
+              layers = 'GEBCO_LATEST',
+              attribution = "Imagery reproduced from the GEBCO_2014 Grid, version 20150318, www.gebco.net") %>%
+  addCircleMarkers(lng = ~Longitude,
+                   lat = ~Latitude,
+                   popup = ~ Location,
+                   radius = 5,
+                   # set fill properties
+                   fillColor = "salmon",
+                   fillOpacity = 1,
+                   # set stroke properties
+                   stroke = T,
+                   weight = 0.5,
+                   color = "white",
+                   opacity = 1)
+```
+
+
