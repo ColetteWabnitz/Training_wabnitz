@@ -45,6 +45,8 @@ annual_esc <- esc %>%
 # chains together a bunch of or statement together
 ```
 
+Map annual escapement by region
+
 ```{r}
 ggplot(annual_esc, mapping = aes(x = Species, y = escapement, fill = SASAP.Region)) +
   geom_col()

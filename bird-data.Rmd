@@ -1,0 +1,109 @@
+---
+title: "bird-data"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(rvest)
+library(readr)
+library(dplyr)
+library(janitor)
+library(ggplot2)
+```
+
+```{r}
+webpage <- read_html("https://www.pwrc.usgs.gov/bbl/manual/speclist.cfm")
+
+tbls <- html_nodes(webpage, "table") %>% 
+    html_table(fill = TRUE)
+
+species <- tbls[[1]] %>% 
+    clean_names() %>% 
+    select(alpha_code, common_name) %>% 
+    mutate(alpha_code = tolower(alpha_code))
+```
+
+```{r}
+predator_original <- read_csv("https://arcticdata.io/metacat/d1/mn/v2/object/urn%3Auuid%3A9ffec04c-7e2d-41dd-9e88-b6c2e8c4375e")
+nest_original <- read_csv("https://arcticdata.io/metacat/d1/mn/v2/object/urn%3Auuid%3A982bd2fc-4edf-4da7-96ef-0d11b853102d")
+```
+
+```{r}
+nest_1 <- nest_original %>% 
+  rename(alpha_code = species)
+pred_1 <- predator_original %>% 
+  rename(alpha_code = species)
+```
+
+```{r}
+nest_joined <- left_join(nest_1, species, by = c("alpha_code"))
+predator_joined <- left_join(pred_1, species, by = c("alpha_code"))
+
+# alternatively don't rename the columns and use the following 
+# nest_joined <- left_join(nest_original, species, by = c("species" = "alpha_code"))
+#predator_joined <- left_join(predator_original, species, by = c("species"="alpha_code"))
+#assign_species_name <- function(df, species){
+# return_df <- left_join(df, species, by = c("species" = "alpha_code))
+# return(return_df)
+
+```
+
+
+Calculate total number of predators by year and species
+
+```{r}
+no_pred <- predator_joined %>% 
+  group_by(year, common_name) %>% 
+  summarise(total = sum(count))
+```
+
+
+Plot results
+```{r}
+
+ggplot(no_pred, aes(x = year, y = total, fill = common_name)) +
+  geom_col()
+```
+
+
+Calculate total number of eggs predated by year and species.
+```{r}
+nest_pred <- nest_joined %>% 
+  group_by (year, common_name) %>% 
+  summarise(total_predated = sum(number_eggs_predated))
+```
+
+
+Calculate total number of predators by year, join to summarized egg predation table, and plot the result
+
+```{r}
+total_pred <- predator_joined %>% 
+  group_by(year) %>% 
+  summarise(pred_count = sum(count))
+```
+
+```{r}
+nest_pred1 <- left_join(nest_pred, total_pred, by = "year") 
+ # group_by(year) %>% 
+  #summarise(total_predated = sum(total_predated, na.rm = T),
+ #           pred_count = sum(pred_count, na.rm = T))
+```
+
+```{r}
+ggplot(nest_pred1) +
+  #geom_col(aes(x = year, y = total_predated)) +
+  geom_point(aes(x = year, y= total_predated, color = common_name))+
+  geom_line(aes(x = year, y= pred_count, color = common_name))
+
+```
+
+```{r}
+ggplot(nest_pred1, aes(x = pred_count, y= total_predated))+
+  geom_point()+
+  facet
+```
+
